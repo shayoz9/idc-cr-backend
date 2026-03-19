@@ -1,0 +1,522 @@
+openapi: 3.0.3
+info:
+  title: Task API
+  version: "1.0.0"
+  description: API for user authentication and task management (generated from project code)
+servers:
+  - url: http://localhost:3000
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+    UserBase:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, user, moderator]
+    NewUser:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin, user, moderator]
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        user:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: string
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+    TokenRefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: string
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [TODO, IN_PROGRESS, DONE]
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateTask:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+        dueDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [TODO, IN_PROGRESS, DONE]
+    CreateTaskWithAI:
+      type: object
+      required: [naturalLanguageInput]
+      properties:
+        naturalLanguageInput:
+          type: string
+    TaskListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        count:
+          type: integer
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+    UsersResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/UserBase'
+paths:
+  /register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/UserBase'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /login:
+    post:
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Missing credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/refresh:
+    post:
+      summary: Refresh access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefreshResponse'
+        '401':
+          description: Missing refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users:
+    get:
+      summary: Get all users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersResponse'
+    post:
+      summary: Create a new user (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBase'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Get a user by id
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBase'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a user (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBase'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a user (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: User deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tasks:
+    get:
+      summary: Get all tasks
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tasks list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+    post:
+      summary: Create a task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTask'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tasks/ai/create:
+    post:
+      summary: Create a task using AI parsing of natural language
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskWithAI'
+      responses:
+        '201':
+          description: Task created by AI
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  task:
+                    $ref: '#/components/schemas/Task'
+                  originalInput:
+                    type: string
+                  aiExtracted:
+                    type: object
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Get a task by id
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update a task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTask'
+      responses:
+        '200':
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete a task
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tasks/status/{status}:
+    parameters:
+      - name: status
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [TODO, IN_PROGRESS, DONE]
+    get:
+      summary: Get tasks by status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tasks filtered by status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+        '400':
+          description: Invalid status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

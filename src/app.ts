@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import loginRouter from "./routes/auth.routes.js";
 import {
   refreshTokenHandler,
@@ -13,6 +14,8 @@ export const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use(express.static(path.join(process.cwd(), "public")));
+
 // Login routes
 app.use("/", loginRouter);
 
@@ -21,10 +24,12 @@ app.use(logger);
 
 // Refresh token endpoint
 app.post("/auth/refresh", refreshTokenHandler);
-
 // Auth routes
 app.use(verifyAccessToken);
 
 // Application routes
 app.use("/users", userRoutes);
 app.use("/tasks", taskRoutes);
+
+
+// localhost:3000/
