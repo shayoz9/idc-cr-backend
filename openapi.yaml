@@ -150,7 +150,7 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/UserBase'
-paths:
+paths: 
   /register:
     post:
       summary: Register a new user
